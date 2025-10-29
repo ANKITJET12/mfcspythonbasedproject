@@ -1,90 +1,118 @@
 """
 CipherMesh Core Logic - Web Version
-Extracted from cipher.py for use in web application
+Updated to match the correct implementation with tagged categories
 """
 
-# ---------------------- Layer 1: Set Layer ---------------------- #
+# ---------------------- Layer 1: Set Layer (Fixed with tags) ---------------------- #
 class SetLayer:
+    """
+    Simpler and robust implementation:
+    - We make encryption always emit a category tag (one character) before the shifted char
+      so decryption becomes straightforward and unambiguous.
+    - We operate only on printable ASCII range 32..126 inclusive (95 chars) and wrap inside it.
+    - Categories: V (vowel), C (consonant), D (digit), S (symbol/space/other)
+    """
+    PRINT_MIN = 32
+    PRINT_MAX = 126
+    PRINT_RANGE = PRINT_MAX - PRINT_MIN + 1
+
     def __init__(self):
-        self.vowels = "AEIOUaeiou"
-        self.consonants = "BCDFGHJKLMNPQRSTVWXYZcdfghjklmnpqrstvwxyz"
-        self.digits = "0123456789"
-        self.shifts = {'vowels': 5, 'consonants': 3, 'digits': 2, 'symbols': 1}
+        self.vowels = set("AEIOUaeiou")
+        self.digits = set("0123456789")
+        # consonants are any alphabetic characters not in vowels
+        # shifts chosen so categories remain distinct when reversed using the tag
+        self.shifts = {'V': 5, 'C': 3, 'D': 2, 'S': 1}
 
-    def _shift_char(self, char, shift):
-        return chr((ord(char) + shift) % 128)
+    def _to_printable_index(self, ch):
+        return ord(ch) - self.PRINT_MIN
 
-    def _unshift_char(self, char, shift):
-        return chr((ord(char) - shift) % 128)
+    def _from_printable_index(self, idx):
+        return chr((idx % self.PRINT_RANGE) + self.PRINT_MIN)
+
+    def _shift_printable(self, ch, shift):
+        idx = self._to_printable_index(ch)
+        return self._from_printable_index(idx + shift)
+
+    def _unshift_printable(self, ch, shift):
+        idx = self._to_printable_index(ch)
+        return self._from_printable_index(idx - shift)
+
+    def _category_of(self, ch):
+        if ch in self.vowels:
+            return 'V'
+        if ch.isalpha():
+            return 'C'
+        if ch in self.digits:
+            return 'D'
+        return 'S'
 
     def encrypt(self, text):
-        encrypted_chars = []
+        encrypted = []
         steps = []
-        for char in text:
-            if char in self.vowels:
-                shift, rule = self.shifts['vowels'], "Vowel"
-            elif char in self.consonants:
-                shift, rule = self.shifts['consonants'], "Consonant"
-            elif char in self.digits:
-                shift, rule = self.shifts['digits'], "Digit"
-            else:
-                shift, rule = self.shifts['symbols'], "Symbol"
-            encrypted_char = self._shift_char(char, shift)
-            encrypted_chars.append(encrypted_char)
+        for ch in text:
+            cat = self._category_of(ch)
+            shift = self.shifts[cat]
+            # ensure we operate on printable characters; if char is already outside printable,
+            # convert its code into printable range first
+            if ord(ch) < self.PRINT_MIN or ord(ch) > self.PRINT_MAX:
+                # map it into printable range using modulo to avoid crashes
+                ch = self._from_printable_index(ord(ch))
+            out = self._shift_printable(ch, shift)
+            # We prefix with category tag to make decryption deterministic
+            encrypted_piece = cat + out
+            encrypted.append(encrypted_piece)
             steps.append({
-                'input': char,
-                'rule': rule,
+                'input': ch,
+                'rule': cat,
                 'shift': shift,
-                'output': encrypted_char
+                'output': encrypted_piece
             })
-        return "".join(encrypted_chars), steps
+        return ''.join(encrypted), steps
 
     def decrypt(self, text):
-        decrypted_chars = []
+        # Expecting pairs of (category, shifted_char)
+        decrypted = []
         steps = []
-        for char in text:
-            decrypted_char = ''
-            matched_rule = None
-            matched_shift = None
-            
-            # Check in EXACT same order as encryption: vowels, consonants, digits, symbols
-            # This mimics encryption's behavior where first matching category is used.
-            # This is the best we can do given the inherent ambiguity in the scheme.
-            unshifted_vowel = self._unshift_char(char, self.shifts['vowels'])
-            if unshifted_vowel in self.vowels:
-                decrypted_char = unshifted_vowel
-                matched_rule = "Vowel"
-                matched_shift = self.shifts['vowels']
-            else:
-                unshifted_consonant = self._unshift_char(char, self.shifts['consonants'])
-                if unshifted_consonant in self.consonants:
-                    decrypted_char = unshifted_consonant
-                    matched_rule = "Consonant"
-                    matched_shift = self.shifts['consonants']
-                else:
-                    unshifted_digit = self._unshift_char(char, self.shifts['digits'])
-                    if unshifted_digit in self.digits:
-                        decrypted_char = unshifted_digit
-                        matched_rule = "Digit"
-                        matched_shift = self.shifts['digits']
-                    else:
-                        # Default to symbol shift
-                        decrypted_char = self._unshift_char(char, self.shifts['symbols'])
-                        matched_rule = "Symbol"
-                        matched_shift = self.shifts['symbols']
-            
-            decrypted_chars.append(decrypted_char)
+        i = 0
+        while i < len(text):
+            cat = text[i]
+            if i + 1 >= len(text):
+                # malformed: no character after tag — treat remaining as symbol
+                shifted = text[i]
+                i += 1
+                decrypted.append(shifted)
+                steps.append({
+                    'input': f'{cat}',
+                    'rule': 'Symbol',
+                    'shift': self.shifts.get(cat, self.shifts['S']),
+                    'output': shifted
+                })
+                continue
+            shifted = text[i+1]
+            shift = self.shifts.get(cat, self.shifts['S'])
+            original = self._unshift_printable(shifted, shift)
+            decrypted.append(original)
             steps.append({
-                'input': char,
-                'rule': matched_rule,
-                'shift': matched_shift,
-                'output': decrypted_char
+                'input': f'{cat}{shifted}',
+                'rule': cat,
+                'shift': shift,
+                'output': original
             })
-        return "".join(decrypted_chars), steps
+            i += 2
+        return ''.join(decrypted), steps
 
-# ---------------------- Layer 2: Function Layer ---------------------- #
+# ---------------------- Layer 2: Function Layer (Fixed to printable range) ---------------------- #
 class FunctionLayer:
-    def __init__(self, a=3, b=7, m=128):
+    """
+    Maps printable ASCII [32..126] -> indices [0..94] and applies affine transformation
+    f(x) = (a*x + b) mod m where m = 95 (printable count). We always work within printable range.
+    """
+    PRINT_MIN = 32
+    PRINT_MAX = 126
+    M = PRINT_MAX - PRINT_MIN + 1  # 95
+
+    def __init__(self, a=3, b=7, m=None):
+        m = self.M if m is None else m
         if self._gcd(a, m) != 1:
             raise ValueError("'a' must be coprime to 'm'.")
         self.a, self.b, self.m = a, b, m
@@ -101,51 +129,60 @@ class FunctionLayer:
                 return x
         return None
 
+    def _to_index(self, ch):
+        return ord(ch) - self.PRINT_MIN
+
+    def _from_index(self, idx):
+        return chr((idx % self.m) + self.PRINT_MIN)
+
     def encrypt(self, text):
-        encrypted_chars = []
+        encrypted = []
         steps = []
-        for char in text:
-            x = ord(char)
-            encrypted_val = (self.a * x + self.b) % self.m
-            encrypted_char = chr(encrypted_val)
-            encrypted_chars.append(encrypted_char)
+        for ch in text:
+            idx = self._to_index(ch)
+            y = (self.a * idx + self.b) % self.m
+            out = self._from_index(y)
+            encrypted.append(out)
             steps.append({
-                'input': char,
-                'input_ascii': x,
-                'output': encrypted_char,
-                'output_ascii': encrypted_val,
-                'formula': f"({self.a}×{x}+{self.b}) mod {self.m} = {encrypted_val}"
+                'input': ch,
+                'input_ascii': ord(ch),
+                'output': out,
+                'output_ascii': ord(out),
+                'formula': f"({self.a}×{idx}+{self.b}) mod {self.m} = {y}"
             })
-        return "".join(encrypted_chars), steps
+        return ''.join(encrypted), steps
 
     def decrypt(self, text):
-        decrypted_chars = []
+        decrypted = []
         steps = []
-        for char in text:
-            y = ord(char)
-            decrypted_val = (self.a_inv * (y - self.b)) % self.m
-            decrypted_char = chr(decrypted_val)
-            decrypted_chars.append(decrypted_char)
+        for ch in text:
+            y = self._to_index(ch)
+            x = (self.a_inv * (y - self.b)) % self.m
+            # Handle negative modulo correctly
+            if x < 0:
+                x = (x + self.m) % self.m
+            out = self._from_index(x)
+            decrypted.append(out)
             steps.append({
-                'input': char,
-                'input_ascii': y,
-                'output': decrypted_char,
-                'output_ascii': decrypted_val,
-                'formula': f"f⁻¹({y}) = ({self.a_inv}×({y}-{self.b})) mod {self.m} = {decrypted_val}"
+                'input': ch,
+                'input_ascii': ord(ch),
+                'output': out,
+                'output_ascii': ord(out),
+                'formula': f"f⁻¹({y}) = ({self.a_inv}×({y}-{self.b})) mod {self.m} = {x}"
             })
-        return "".join(decrypted_chars), steps
+        return ''.join(decrypted), steps
 
-# ---------------------- Layer 3: Graph Layer ---------------------- #
+# ---------------------- Layer 3: Graph Layer (block reversal) ---------------------- #
 class GraphLayer:
     def __init__(self, block_size=4):
         self.block_size = block_size
 
     def _transform(self, text):
-        transformed_text = ""
+        transformed = []
         for i in range(0, len(text), self.block_size):
             block = text[i:i+self.block_size]
-            transformed_text += block[::-1]
-        return transformed_text
+            transformed.append(block[::-1])
+        return ''.join(transformed)
 
     def encrypt(self, text):
         encrypted_text = self._transform(text)
@@ -161,7 +198,7 @@ class GraphLayer:
         return encrypted_text, blocks
 
     def decrypt(self, text):
-        # Decrypt is same as encrypt for block reversal
+        # same operation because reversal is its own inverse
         decrypted_text = self._transform(text)
         blocks = []
         for i in range(0, len(text), self.block_size):
@@ -191,7 +228,7 @@ class CipherMesh:
         # Layer 1: Set Layer
         set_encrypted, set_steps = self.set_layer.encrypt(plaintext)
         details['layers'].append({
-            'name': 'Layer 1: Set Classification Shift',
+            'name': 'Layer 1: Set Classification Shift (Tagged)',
             'input': plaintext,
             'output': set_encrypted,
             'steps': set_steps
@@ -221,8 +258,13 @@ class CipherMesh:
             'details': details
         }
 
-    def decrypt_with_details(self, ciphertext):
-        """Decrypt with detailed processing information."""
+    def decrypt_with_details(self, ciphertext, set_layer_rules=None):
+        """Decrypt with detailed processing information.
+        
+        Args:
+            ciphertext: The encrypted text to decrypt
+            set_layer_rules: Deprecated - no longer needed with tagged approach
+        """
         details = {
             'ciphertext': ciphertext,
             'length': len(ciphertext),
@@ -248,10 +290,10 @@ class CipherMesh:
             'formula': f'f⁻¹(y) = ({self.function_layer.a_inv}×(y-{self.function_layer.b})) mod {self.function_layer.m}'
         })
         
-        # Layer 1: Set Layer (reverse)
+        # Layer 1: Set Layer (reverse) - now unambiguous with tags
         set_decrypted, set_steps = self.set_layer.decrypt(function_decrypted)
         details['layers'].append({
-            'name': 'Reversing Layer 1: Set Classification Shift',
+            'name': 'Reversing Layer 1: Set Classification Shift (Tagged)',
             'input': function_decrypted,
             'output': set_decrypted,
             'steps': set_steps

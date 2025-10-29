@@ -43,7 +43,7 @@ def decrypt():
         if not ciphertext:
             return jsonify({'error': 'Ciphertext is required'}), 400
         
-        # Get detailed decryption process
+        # Get detailed decryption process (tagged approach makes this unambiguous)
         result = cipher_mesh.decrypt_with_details(ciphertext)
         
         return jsonify({
