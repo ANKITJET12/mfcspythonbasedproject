@@ -46,24 +46,33 @@ class SetLayer:
             decrypted_char = ''
             matched_rule = None
             matched_shift = None
-            for rule, shift in self.shifts.items():
-                unshifted_char = self._unshift_char(char, shift)
-                is_match = False
-                if rule == 'vowels' and unshifted_char in self.vowels:
-                    is_match = True
-                elif rule == 'consonants' and unshifted_char in self.consonants:
-                    is_match = True
-                elif rule == 'digits' and unshifted_char in self.digits:
-                    is_match = True
-                if is_match:
-                    decrypted_char = unshifted_char
-                    matched_rule = rule.capitalize()
-                    matched_shift = shift
-                    break
-            if not decrypted_char:
-                decrypted_char = self._unshift_char(char, self.shifts['symbols'])
-                matched_rule = "Symbol"
-                matched_shift = self.shifts['symbols']
+            
+            # Check in EXACT same order as encryption: vowels, consonants, digits, symbols
+            # This mimics encryption's behavior where first matching category is used.
+            # This is the best we can do given the inherent ambiguity in the scheme.
+            unshifted_vowel = self._unshift_char(char, self.shifts['vowels'])
+            if unshifted_vowel in self.vowels:
+                decrypted_char = unshifted_vowel
+                matched_rule = "Vowel"
+                matched_shift = self.shifts['vowels']
+            else:
+                unshifted_consonant = self._unshift_char(char, self.shifts['consonants'])
+                if unshifted_consonant in self.consonants:
+                    decrypted_char = unshifted_consonant
+                    matched_rule = "Consonant"
+                    matched_shift = self.shifts['consonants']
+                else:
+                    unshifted_digit = self._unshift_char(char, self.shifts['digits'])
+                    if unshifted_digit in self.digits:
+                        decrypted_char = unshifted_digit
+                        matched_rule = "Digit"
+                        matched_shift = self.shifts['digits']
+                    else:
+                        # Default to symbol shift
+                        decrypted_char = self._unshift_char(char, self.shifts['symbols'])
+                        matched_rule = "Symbol"
+                        matched_shift = self.shifts['symbols']
+            
             decrypted_chars.append(decrypted_char)
             steps.append({
                 'input': char,
