@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CipherMesh - Multi-Stage Secure Text Transformation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="background-effect"></div>
+    
+    <div class="container">
+        <header class="title-section">
+            <h1 class="title">CIPHERMESH</h1>
+            <p class="tagline">A Multi-Stage Secure Text Transformation System</p>
+        </header>
+
+        <main class="main-content">
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="encrypt">
+                    <span class="icon">🔐</span>
+                    Encryption Protocol
+                </button>
+                <button class="mode-btn" data-mode="decrypt">
+                    <span class="icon">🔓</span>
+                    Decryption Protocol
+                </button>
+            </div>
+
+            <div class="input-section">
+                <div class="input-group">
+                    <label id="input-label" for="text-input">Enter Plaintext</label>
+                    <textarea id="text-input" placeholder="Enter your text here..." rows="4"></textarea>
+                </div>
+                <button id="process-btn" class="process-btn">
+                    <span class="btn-text">Initiate Encryption</span>
+                    <span class="btn-loader" style="display: none;">⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏</span>
+                </button>
+            </div>
+
+            <div id="result-section" class="result-section" style="display: none;">
+                <div class="result-box">
+                    <h3 class="result-title">Result</h3>
+                    <div id="result-content" class="result-content"></div>
+                    <button id="copy-btn" class="copy-btn">Copy to Clipboard</button>
+                </div>
+            </div>
+
+            <div id="details-section" class="details-section" style="display: none;">
+                <h3 class="details-title">Processing Details</h3>
+                <div id="details-content" class="details-content"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

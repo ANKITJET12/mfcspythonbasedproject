@@ -53,11 +53,72 @@ o	Guarantees lossless restoration of the original plaintext from the ciphertext.
 o	Provides detailed, step-by-step terminal output during both encryption and decryption, showing the input and output of each specific layer.
 o	Includes user-friendly confirmation prompts and "processing" loaders to enhance the user experience.
 Source Files
-This project is contained entirely within a single script, simplifying execution and distribution.
+This project now includes both a terminal version and a web version:
+
+**Terminal Version:**
 •	cipher.py
-o	Description: The main and only Python script. It contains the complete application, including:
+o	Description: The original terminal-based Python script. It contains the complete application, including:
 	The UI class for all screen rendering, colors, and styling.
 	The SetLayer, FunctionLayer, and GraphLayer classes, each containing their respective encrypt and decrypt logic.
 	The main CipherMesh class that manages the overall encryption/decryption pipeline.
+
+**Web Version:**
+•	app.py - Flask web application server with API endpoints
+•	cipher_logic.py - Core encryption/decryption logic extracted for web use
+•	templates/index.html - Web interface HTML template
+•	static/css/style.css - Hacker-themed styling
+•	static/js/main.js - Frontend JavaScript for interactivity
+•	requirements.txt - Python dependencies
+
+## Running the Web Application
+
+### Prerequisites
+- Python 3.7 or higher
+- pip (Python package installer)
+
+### Installation Steps
+
+1. Install dependencies:
+```bash
+# On macOS/Linux, use pip3:
+pip3 install -r requirements.txt
+
+# On Windows, use pip:
+pip install -r requirements.txt
+```
+
+2. Run the Flask application:
+```bash
+# On macOS/Linux, use python3:
+python3 app.py
+
+# On Windows, use python:
+python app.py
+```
+
+3. Open your web browser and navigate to:
+```
+http://localhost:5001
+```
+
+**Note:** Port 5001 is used to avoid conflicts with macOS AirPlay Receiver which uses port 5000.
+
+**Note:** If `python3` or `pip3` commands are not found, you may need to install Python 3 from [python.org](https://www.python.org/downloads/) or use Homebrew (`brew install python3`).
+
+### Web Interface Features
+
+The web version maintains the same hacker-style aesthetic as the terminal version with:
+- Interactive encryption and decryption modes
+- Real-time processing visualization
+- Detailed layer-by-layer breakdown of transformations
+- Modern, responsive design
+- Copy-to-clipboard functionality
+
+The web interface provides the same three-layer encryption system:
+- **Layer 1:** Set Classification Shift (Vowels, Consonants, Digits, Symbols)
+- **Layer 2:** Mathematical Substitution (Affine Cipher)
+- **Layer 3:** Graph Transformation (Block Reversal)
+
+All encryption and decryption operations are performed server-side using the same core logic as the terminal version, ensuring identical results.
 
 
