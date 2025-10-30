@@ -5,7 +5,97 @@ let currentMode = 'encrypt';
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
+    initMatrixEffect();
+    initTerminalTyping();
 });
+
+// Matrix-style red rain effect
+function initMatrixEffect() {
+    const canvas = document.getElementById('matrix-canvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン█▓▒░';
+    const charArray = chars.split('');
+    const fontSize = 14;
+    const columns = canvas.width / fontSize;
+    const drops = [];
+    
+    // Initialize drops
+    for (let x = 0; x < columns; x++) {
+        drops[x] = Math.random() * -100;
+    }
+    
+    function draw() {
+        // Fade effect
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#ff0000';
+        ctx.font = fontSize + 'px monospace';
+        
+        for (let i = 0; i < drops.length; i++) {
+            const text = charArray[Math.floor(Math.random() * charArray.length)];
+            const x = i * fontSize;
+            const y = drops[i] * fontSize;
+            
+            // Gradient effect - brighter at top
+            const gradient = ctx.createLinearGradient(x, y, x, y + fontSize * 10);
+            gradient.addColorStop(0, '#ff3333');
+            gradient.addColorStop(0.5, '#ff0000');
+            gradient.addColorStop(1, '#660000');
+            ctx.fillStyle = gradient;
+            
+            ctx.fillText(text, x, y);
+            
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i]++;
+        }
+    }
+    
+    setInterval(draw, 35);
+    
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const newColumns = canvas.width / fontSize;
+        // Reset drops array
+        drops.length = 0;
+        for (let x = 0; x < newColumns; x++) {
+            drops[x] = Math.random() * -100;
+        }
+    });
+}
+
+// Terminal-style typing effect for tagline
+function initTerminalTyping() {
+    const tagline = document.querySelector('.tagline');
+    if (!tagline) return;
+    
+    const text = tagline.textContent;
+    tagline.textContent = '';
+    tagline.style.border = 'none';
+    
+    let i = 0;
+    function type() {
+        if (i < text.length) {
+            tagline.textContent += text.charAt(i);
+            i++;
+            setTimeout(type, 50);
+        } else {
+            tagline.style.borderTop = '1px solid var(--red-primary)';
+            tagline.style.borderBottom = '1px solid var(--red-primary)';
+            tagline.style.padding = '0.5rem 0';
+        }
+    }
+    
+    setTimeout(type, 500);
+}
 
 function setupEventListeners() {
     // Mode selector buttons
@@ -111,10 +201,23 @@ function showResults(data) {
     const detailsSection = document.getElementById('details-section');
     const detailsContent = document.getElementById('details-content');
 
-    // Show result
+    // Show result with terminal-style typing effect
     const resultKey = currentMode === 'encrypt' ? 'result' : 'result';
-    resultContent.textContent = data[resultKey];
+    const resultText = data[resultKey];
+    
     resultSection.style.display = 'block';
+    resultContent.textContent = '';
+    
+    // Terminal typing effect
+    let charIndex = 0;
+    const typeResult = () => {
+        if (charIndex < resultText.length) {
+            resultContent.textContent += resultText.charAt(charIndex);
+            charIndex++;
+            setTimeout(typeResult, 30);
+        }
+    };
+    typeResult();
 
     // Show details
     if (data.details && data.details.layers) {
@@ -133,11 +236,20 @@ function showResults(data) {
 function createLayerBox(layer, index) {
     const layerBox = document.createElement('div');
     layerBox.className = 'layer-box';
+    layerBox.style.opacity = '0';
+    layerBox.style.transform = 'translateX(-20px)';
 
     const header = document.createElement('div');
     header.className = 'layer-header';
-    header.innerHTML = `<span>${index + 1}.</span> ${layer.name}`;
+    header.innerHTML = `<span>[${index + 1}]</span> ${layer.name}`;
     layerBox.appendChild(header);
+    
+    // Animate in
+    setTimeout(() => {
+        layerBox.style.transition = 'all 0.5s ease-out';
+        layerBox.style.opacity = '1';
+        layerBox.style.transform = 'translateX(0)';
+    }, index * 100);
 
     const info = document.createElement('div');
     info.className = 'layer-info';
@@ -242,15 +354,18 @@ function handleCopy() {
     navigator.clipboard.writeText(text).then(() => {
         const copyBtn = document.getElementById('copy-btn');
         const originalText = copyBtn.textContent;
-        copyBtn.textContent = 'Copied!';
+        copyBtn.textContent = '[COPIED]';
         copyBtn.style.color = 'var(--red-bright)';
+        copyBtn.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.8)';
         
         setTimeout(() => {
             copyBtn.textContent = originalText;
             copyBtn.style.color = 'var(--red-primary)';
+            copyBtn.style.boxShadow = '';
         }, 2000);
     }).catch(err => {
         console.error('Failed to copy:', err);
+        showError('[ERROR] Failed to copy to clipboard');
     });
 }
 
